@@ -1,0 +1,112 @@
+# rag_engine.py
+import os
+import re
+from langchain_groq import ChatGroq
+from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_community.retrievers import BM25Retriever
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
+from langchain_classic.retrievers import ContextualCompressionRetriever
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+# Configure global environment keys for LangSmith telemetry tracing
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGCHAIN_PROJECT"] = "SECP ChatBot"
+
+# Initialize primary inference model instance
+llm_node = ChatGroq(model="llama-3.1-8b-instant", temperature=0.0)
+
+# Load target compliance document corpus from local subdirectory
+loader = PyPDFDirectoryLoader("Data/")
+docs = loader.load()
+
+# Fragment text documents into optimized structural dimensions
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+splits = text_splitter.split_documents(docs)
+
+# Initialize deep semantic dense vector embeddings engine
+bge_embeddings = HuggingFaceBgeEmbeddings(model_name="BAAI/bge-small-en-v1.5", model_kwargs={'device': 'cpu'})
+
+# Seed data records into an ephemeral, localized vector space
+vectorstore = Chroma.from_documents(documents=splits, embedding=bge_embeddings)
+vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+
+# Initialize statistical keyword sparse matching retriever
+bm25_retriever = BM25Retriever.from_documents(splits)
+bm25_retriever.k = 5
+
+# Interleave retrievers to compile a hybrid ensemble architecture
+ensemble_retriever = EnsembleRetriever(retrievers=[bm25_retriever, vector_retriever], weights=[0.4, 0.6])
+
+# Initialize transformer cross-encoder for deep contextual context evaluation
+rerank_model = HuggingFaceCrossEncoder(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2")
+compressor = CrossEncoderReranker(model=rerank_model, top_n=3)
+
+# Wrap ensemble layer with contextual compression to construct the production retriever
+production_compressed_retriever = ContextualCompressionRetriever(
+    base_compressor=compressor, 
+    base_retriever=ensemble_retriever
+)
+
+# Compile intent-focused structural prompt template for multi-turn query contextualization
+contextualize_q_system_prompt = "Given a chat history and the latest user question, re-phrase it to be standalone."
+contextualize_q_prompt = ChatPromptTemplate.from_messages([
+    ("system", contextualize_q_system_prompt),
+    MessagesPlaceholder("chat_history"),
+    ("human", "{input}"),
+])
+history_aware_retriever = create_history_aware_retriever(llm_node, production_compressed_retriever, contextualize_q_prompt)
+
+# Compile ground-truth contextual prompt blueprint for authoritative document answering
+qa_system_prompt = "You are an expert SECP corporate compliance assistant. Answer using the context:\n\n{context}"
+qa_prompt = ChatPromptTemplate.from_messages([
+    ("system", qa_system_prompt),
+    MessagesPlaceholder("chat_history"),
+    ("human", "{input}"),
+])
+question_answer_chain = create_stuff_documents_chain(llm_node, qa_prompt)
+rag_production_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+
+# Stateful runtime data mapping dictionary for multi-session chat records tracking
+store = {}
+
+def get_session_history(session_id: str):
+    """
+    Retrieves or instantiates a memory history instance bound to a unique session token identifier.
+    """
+    if session_id not in store:
+        store[session_id] = ChatMessageHistory()
+    return store[session_id]
+
+# Construct fully compiled, stateless-to-stateful managed RAG chain instance
+conversational_production_rag = RunnableWithMessageHistory(
+    rag_production_chain, 
+    get_session_history,
+    input_messages_key="input", 
+    history_messages_key="chat_history", 
+    output_messages_key="answer"
+)
+
+def redact_pakistani_pii(text: str) -> str:
+    """
+    Scans user inputs to detect and systematically replace Pakistani CNIC identifiers with secure placeholders.
+    """
+    return re.sub(r'\b\d{5}-\d{7}-\d{1}\b', '[CNIC_REDACTED]', text)
+
+def output_safety_filter(response_text: str) -> str:
+    """
+    Applies strict post-generation verification checks to intercept potential system prompt leakage anomalies.
+    """
+    fallback_response = "I cannot process that request as it violates safety guidelines."
+    if any(k in response_text.lower() for k in ["system prompt", "compliance assistant", "provided context blocks"]):
+        return fallback_response
+    return redact_pakistani_pii(response_text)
