@@ -16,6 +16,7 @@ from langchain_classic.chains.combine_documents import create_stuff_documents_ch
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Configure global environment keys for LangSmith telemetry tracing
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -34,7 +35,10 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20
 splits = text_splitter.split_documents(docs)
 
 # Initialize deep semantic dense vector embeddings engine
-bge_embeddings = HuggingFaceBgeEmbeddings(model_name="BAAI/bge-small-en-v1.5", model_kwargs={'device': 'cpu'})
+bge_embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+    model_kwargs={'device': 'cpu'}
+)
 
 # Seed data records into an ephemeral, localized vector space
 vectorstore = Chroma.from_documents(documents=splits, embedding=bge_embeddings)

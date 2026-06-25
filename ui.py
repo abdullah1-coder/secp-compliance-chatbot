@@ -17,8 +17,14 @@ st.caption("Production Decoupled Interface. Connection channel routed via locali
 if "session_id" not in st.session_state:
     st.session_state.session_id = str(uuid.uuid4())
 
+# Ensure that the session history tracking payload resets cleanly on initial browser handshakes
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I am your SECP compliance assistant. How can I assist you with corporate filings or name reservations today?"}]
+    st.session_state.messages = [
+        {
+            "role": "assistant", 
+            "content": "Hello! I am your SECP compliance assistant. How can I assist you with corporate filings or name reservations today?"
+        }
+    ]
 
 # Render active conversational history logs to interface container spaces
 for message in st.session_state.messages:
