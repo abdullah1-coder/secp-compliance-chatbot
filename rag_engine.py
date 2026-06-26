@@ -4,15 +4,15 @@ import re
 from langchain_groq import ChatGroq
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings  # Correct modern wrapper
 from langchain_community.vectorstores import Chroma
 from langchain_community.retrievers import BM25Retriever
-from langchain_classic.retrievers import EnsembleRetriever
-from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain.retrievers import EnsembleRetriever
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 
 # Telemetry tracking configurations
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -47,15 +47,16 @@ def get_production_chain():
         from langchain_core.documents import Document
         splits = [Document(page_content="Securities and Exchange Commission of Pakistan (SECP) corporate compliance rules.")]
     else:
-        # Fragment text documents into optimized structural dimensions
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = text_splitter.split_documents(docs)
 
-    # Cloud-hosted embedding mapping using zero local RAM
+    # Cloud-hosted embedding mapping using zero local RAM via the updated partner class
+    # Looks for 'HF_TOKEN' or 'HUGGINGFACEHUB_API_TOKEN' in the environment
     huggingface_api_key = os.environ.get("HF_TOKEN")
-    bge_embeddings = HuggingFaceInferenceAPIEmbeddings(
-        api_key=huggingface_api_key,
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    bge_embeddings = HuggingFaceEndpointEmbeddings(
+        model="sentence-transformers/all-MiniLM-L6-v2",
+        huggingfacehub_api_token=huggingface_api_key,
+        task="feature-extraction"
     )
 
     # Seed spatial index workspace
