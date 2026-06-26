@@ -77,7 +77,12 @@ def get_production_chain():
     )
 
     # Multi-turn interaction context refactoring chains
-    contextualize_q_system_prompt = "Given a chat history and the latest user question, re-phrase it to be standalone."
+    # Robust multi-turn interaction context refactoring chains
+    contextualize_q_system_prompt = (
+        "Given a chat history (which may contain markdown tables) and the latest user question, "
+        "re-phrase the user question to be a standalone question that can be understood without the chat history. "
+        "Do NOT answer the question, just reformulate it. If you cannot reformulate it, return the user question exactly as it is."
+    )
     contextualize_q_prompt = ChatPromptTemplate.from_messages([
         ("system", contextualize_q_system_prompt),
         MessagesPlaceholder("chat_history"),
@@ -85,8 +90,14 @@ def get_production_chain():
     ])
     history_aware_retriever = create_history_aware_retriever(llm_node, production_retriever, contextualize_q_prompt)
 
-    # Core prompt blueprint specifications
-    qa_system_prompt = "You are an expert SECP corporate compliance assistant. Answer using the context:\n\n{context}"
+    # Core prompt blueprint specifications with explicit "not found" fallback handling
+    qa_system_prompt = (
+        "You are an expert SECP corporate compliance assistant. Answer the user's question using the provided context blocks. "
+        "If the context does not contain the answer, or if you are unsure, explicitly state: "
+        "'I am sorry, but the provided compliance documents do not contain specific information regarding this query.' "
+        "Do not leave the response empty or blank.\n\n"
+        "Context:\n{context}"
+    )
     qa_prompt = ChatPromptTemplate.from_messages([
         ("system", qa_system_prompt),
         MessagesPlaceholder("chat_history"),
