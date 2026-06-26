@@ -24,7 +24,7 @@ os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_PROJECT"] = "SECP ChatBot"
 
 # Initialize primary inference model instance
-llm_node = ChatGroq(model="llama-3.1-8b-instant", temperature=0.0)
+llm_node = ChatGroq(model="openai/gpt-oss-120b", temperature=0.0)
 
 # Load target compliance document corpus from local subdirectory
 loader = PyPDFDirectoryLoader("Data/")
