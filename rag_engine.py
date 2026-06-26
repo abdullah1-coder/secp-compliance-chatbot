@@ -113,6 +113,19 @@ def redact_pakistani_pii(text: str) -> str:
 
 def output_safety_filter(response_text: str) -> str:
     fallback_response = "I cannot process that request as it violates safety guidelines."
-    if any(k in response_text.lower() for k in ["system prompt", "compliance assistant", "provided context blocks"]):
+    
+    # Lowercase for uniform validation checks
+    check_text = response_text.lower()
+    
+    # Target phrases that indicate the LLM leaked raw system configuration blueprints
+    leak_indicators = [
+        "you are an expert secp",
+        "answer using the context",
+        "provided context blocks",
+        "qa_system_prompt"
+    ]
+    
+    if any(phrase in check_text for phrase in leak_indicators):
         return fallback_response
+        
     return redact_pakistani_pii(response_text)
