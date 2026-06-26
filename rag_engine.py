@@ -20,7 +20,7 @@ os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_PROJECT"] = "SECP ChatBot"
 
 # Primary inference engine node
-llm_node = ChatGroq(model="llama-3.1-8b-instant", temperature=0.0)
+llm_node = ChatGroq(model="openai/gpt-oss-20b", temperature=0.0)
 
 _cached_chain = None
 
