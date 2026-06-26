@@ -43,7 +43,7 @@ if user_input := st.chat_input("Ask about name reservations, fees, or forms...")
         
         try:
             # Route transaction request to backend microservice listening network port
-            backend_url = "http://localhost:10000/chat"
+            backend_url = "https://secp-compliance-chatbot.onrender.com/chat"
             payload = {
                 "input": user_input, 
                 "session_id": st.session_state.session_id
