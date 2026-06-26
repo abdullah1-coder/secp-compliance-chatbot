@@ -1,5 +1,6 @@
-# app.py
+# app.py (Updated with explicit exception debugging)
 import os
+import traceback  # Imported to catch the untruncated error graph
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from rag_engine import get_production_chain, redact_pakistani_pii, output_safety_filter
@@ -27,15 +28,16 @@ async def handle_rag_chat(payload: dict):
         return {"session_id": session_id, "answer": "I cannot process that request.", "status": "BLOCKED"}
         
     try:
-        # Fetch the engine chain lazily (Resolves connection limits cleanly)
         conversational_production_rag = get_production_chain()
-        
         config = {"configurable": {"session_id": session_id}}
         chain_output = conversational_production_rag.invoke({"input": sanitized_query}, config=config)
         final_bot_delivery = output_safety_filter(chain_output["answer"])
         return {"session_id": session_id, "answer": final_bot_delivery, "status": "SUCCESS"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Capture the entire un-truncated error traceback text string
+        error_message = traceback.format_exc()
+        # Return the raw error as the answer so it prints right on your Streamlit interface
+        return {"session_id": session_id, "answer": f"⚠️ Backend Crash Details:\n\n{error_message}", "status": "ERROR"}
 
 if __name__ == "__main__":
     import uvicorn
