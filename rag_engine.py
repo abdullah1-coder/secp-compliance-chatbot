@@ -51,14 +51,17 @@ def get_production_chain():
         splits = text_splitter.split_documents(docs)
 
     # Cloud-hosted embedding mapping using zero local RAM via the updated partner class
-    # Looks for 'HF_TOKEN' or 'HUGGINGFACEHUB_API_TOKEN' in the environment
     huggingface_api_key = os.environ.get("HF_TOKEN")
+    
+    # Explicit backup: Set the legacy variable string in memory so the internal LangChain client connects without crashing
+    if huggingface_api_key:
+        os.environ["HUGGINGFACEHUB_API_TOKEN"] = huggingface_api_key
+
     bge_embeddings = HuggingFaceEndpointEmbeddings(
         model="sentence-transformers/all-MiniLM-L6-v2",
         huggingfacehub_api_token=huggingface_api_key,
         task="feature-extraction"
     )
-
     # Seed spatial index workspace
     vectorstore = Chroma.from_documents(documents=splits, embedding=bge_embeddings)
     vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 1})
