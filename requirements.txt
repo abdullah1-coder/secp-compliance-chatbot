@@ -8,7 +8,6 @@ langchain-groq
 langchain-huggingface
 chromadb
 pypdf
-sentence-transformers
 rank-bm25
 langsmith
 pydantic

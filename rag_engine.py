@@ -17,6 +17,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 
 # Configure global environment keys for LangSmith telemetry tracing
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -35,9 +36,10 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20
 splits = text_splitter.split_documents(docs)
 
 # Initialize deep semantic dense vector embeddings engine
-bge_embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2",
-    model_kwargs={'device': 'cpu'}
+huggingface_api_key = os.environ.get("HF_TOKEN")
+bge_embeddings = HuggingFaceInferenceAPIEmbeddings(
+    api_key=huggingface_api_key,
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
 
 # Seed data records into an ephemeral, localized vector space
