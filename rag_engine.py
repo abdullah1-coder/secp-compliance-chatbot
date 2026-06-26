@@ -7,9 +7,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.retrievers import BM25Retriever
-from langchain_classic.retrievers import EnsembleRetriever
-from langchain_classic.chains import create_history_aware_retriever, create_retrieval_chain
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain.retrievers import EnsembleRetriever
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -20,29 +20,38 @@ os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_PROJECT"] = "SECP ChatBot"
 
 # Primary inference engine node
-llm_node = ChatGroq(model="openai/gpt-oss-120b", temperature=0.0)
+llm_node = ChatGroq(model="llama-3.1-8b-instant", temperature=0.0)
 
-# Global variables to cache the pipeline states in memory after the first request
 _cached_chain = None
 
 def get_production_chain():
     """
-    Lazily initializes the RAG pipeline components.
-    This guarantees that network requests are only made after the server is fully running.
+    Lazily initializes the RAG pipeline components safely.
+    Defers execution to avoid cold-boot network blocking or empty directory crashes.
     """
     global _cached_chain
     if _cached_chain is not None:
         return _cached_chain
 
+    # Defensive path check: Create folder if it was ignored by Git
+    target_dir = "data"
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
     # Document ingestion layer
-    loader = PyPDFDirectoryLoader("data/")
+    loader = PyPDFDirectoryLoader(f"{target_dir}/")
     docs = loader.load()
 
-    # Token split allocations
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    splits = text_splitter.split_documents(docs)
+    # Fallback structure: If folder has no PDFs, provide an explicit dummy document to prevent Chroma crash
+    if not docs:
+        from langchain_core.documents import Document
+        splits = [Document(page_content="Securities and Exchange Commission of Pakistan (SECP) corporate compliance rules.")]
+    else:
+        # Fragment text documents into optimized structural dimensions
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        splits = text_splitter.split_documents(docs)
 
-    # Cloud hosted embedding mapping using zero local RAM
+    # Cloud-hosted embedding mapping using zero local RAM
     huggingface_api_key = os.environ.get("HF_TOKEN")
     bge_embeddings = HuggingFaceInferenceAPIEmbeddings(
         api_key=huggingface_api_key,
@@ -51,11 +60,11 @@ def get_production_chain():
 
     # Seed spatial index workspace
     vectorstore = Chroma.from_documents(documents=splits, embedding=bge_embeddings)
-    vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 1})
 
     # Sparse text search matching index
     bm25_retriever = BM25Retriever.from_documents(splits)
-    bm25_retriever.k = 3
+    bm25_retriever.k = 1
 
     # High-speed memory-efficient hybrid network ensemble
     production_retriever = EnsembleRetriever(
@@ -82,7 +91,6 @@ def get_production_chain():
     question_answer_chain = create_stuff_documents_chain(llm_node, qa_prompt)
     rag_production_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
-    # Memory storage configuration mappings
     store = {}
 
     def get_session_history(session_id: str):
