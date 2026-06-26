@@ -34,7 +34,7 @@ def get_production_chain():
         return _cached_chain
 
     # Defensive path check: Create folder if it was ignored by Git
-    target_dir = "data"
+    target_dir = "Data"
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
