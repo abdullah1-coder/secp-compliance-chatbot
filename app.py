@@ -25,9 +25,14 @@ except Exception as e:
     print(traceback.format_exc())
     GLOBAL_RAG_CHAIN = None
 
-@app.route("/", methods=["GET", "HEAD"])
-async def root_health_check(request=None):
+@app.get("/")
+async def root_health_check_get():
     return {"status": "healthy", "engine": "SECP RAG Hybrid Pipeline Active"}
+
+@app.head("/")
+async def root_health_check_head():
+    # HEAD requests require an empty body response
+    return None
 
 @app.post("/chat")
 async def handle_rag_chat(payload: dict):
