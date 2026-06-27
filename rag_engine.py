@@ -64,11 +64,11 @@ def get_production_chain():
     )
     # Seed spatial index workspace
     vectorstore = Chroma.from_documents(documents=splits, embedding=bge_embeddings)
-    vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 1})
+    vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
     # Sparse text search matching index
     bm25_retriever = BM25Retriever.from_documents(splits)
-    bm25_retriever.k = 1
+    bm25_retriever.k = 3
 
     # High-speed memory-efficient hybrid network ensemble
     production_retriever = EnsembleRetriever(
