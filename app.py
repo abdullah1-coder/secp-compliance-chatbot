@@ -24,6 +24,10 @@ except Exception as e:
     print("Critical Error during vector database startup compilation:")
     print(traceback.format_exc())
     GLOBAL_RAG_CHAIN = None
+    
+@app.get("/")
+async def root_health_check():
+    return {"status": "healthy", "engine": "SECP RAG Hybrid Pipeline Active"}
 
 @app.post("/chat")
 async def handle_rag_chat(payload: dict):
