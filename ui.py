@@ -8,6 +8,7 @@ st.set_page_config(
     page_title="SECP Compliance Assistant", 
     page_icon="⚖️", 
     layout="centered"
+    
 )
 
 st.title("SECP Compliance Assistant")
